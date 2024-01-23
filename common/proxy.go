@@ -104,25 +104,30 @@ func NewSingleHostReverseProxy(target *url.URL) *httputil.ReverseProxy {
 		req.Header.Set("X-Forwarded-For", randIP)
 
 		ckUserMUID, _ := req.Cookie(User_MUID_COOKIE_NAME)
-		if ckUserMUID == nil || ckUserMUID.Value == "" {
-			if USER_MUID != "" {
-				// 添加 MUID Cookie
-				req.AddCookie(&http.Cookie{
-					Name:  User_MUID_COOKIE_NAME,
-					Value: USER_MUID,
-				})
-			}
+		if (ckUserMUID == nil || ckUserMUID.Value == "") && USER_MUID != "" {
+			// 添加 MUID Cookie
+			req.AddCookie(&http.Cookie{
+				Name:  User_MUID_COOKIE_NAME,
+				Value: USER_MUID,
+			})
 		}
 
 		ckUserKievRPSSecAuth, _ := req.Cookie(USER_KievRPSSecAuth_COOKIE_NAME)
-		if ckUserKievRPSSecAuth == nil || ckUserKievRPSSecAuth.Value == "" {
-			if USER_KievRPSSecAuth != "" {
-				// 添加 KievRPSSecAuth Cookie
-				req.AddCookie(&http.Cookie{
-					Name:  USER_KievRPSSecAuth_COOKIE_NAME,
-					Value: USER_KievRPSSecAuth,
-				})
-			}
+		if (ckUserKievRPSSecAuth == nil || ckUserKievRPSSecAuth.Value == "") && USER_KievRPSSecAuth != "" {
+			// 添加 KievRPSSecAuth Cookie
+			req.AddCookie(&http.Cookie{
+				Name:  USER_KievRPSSecAuth_COOKIE_NAME,
+				Value: USER_KievRPSSecAuth,
+			})
+		}
+
+		ckUserRwBf, _ := req.Cookie(USER_RwBf_COOKIE_NAME)
+		if (ckUserRwBf == nil || ckUserRwBf.Value == "") && USER_RwBf != "" {
+			// 添加 RwBf Cookie
+			req.AddCookie(&http.Cookie{
+				Name:  USER_RwBf_COOKIE_NAME,
+				Value: USER_RwBf,
+			})
 		}
 
 		// 未登录用户
@@ -142,25 +147,14 @@ func NewSingleHostReverseProxy(target *url.URL) *httputil.ReverseProxy {
 			// }
 		}
 
-		ckUserRwBf, _ := req.Cookie(USER_RwBf_COOKIE_NAME)
-		if ckUserRwBf == nil || ckUserRwBf.Value == "" {
-			if USER_RwBf != "" {
-				// 添加 RwBf Cookie
-				req.AddCookie(&http.Cookie{
-					Name:  USER_RwBf_COOKIE_NAME,
-					Value: USER_RwBf,
-				})
-			}
-		}
-
 		ua := req.UserAgent()
 		isMobile := strings.Contains(ua, "Mobile") || strings.Contains(ua, "Android")
 
 		// m pc 画图大小不一样
 		if isMobile {
-			req.Header.Set("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 15_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.7 Mobile/15E148 Safari/605.1.15 BingSapphire/1.0.410529013")
+			req.Header.Set("User-Agent", User_Agent_Mobile)
 		} else {
-			req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.55")
+			req.Header.Set("User-Agent", User_Agent)
 		}
 
 		for hKey := range req.Header {
