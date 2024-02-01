@@ -3,7 +3,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "/api/{index,web,sydney,sys-config,bypass,challenge}.go",
+      "src": "/api/{index,web,sydney,designer,sys-config,bypass,challenge,verify}.go",
       "use": "@vercel/go"
     },
     {
@@ -25,6 +25,10 @@
       "dest": "/api/challenge.go"
     },
     {
+      "src": "/challenge/verify",
+      "dest": "/api/verify.go"
+    },
+    {
       "src": "/v1/chat/completions",
       "dest": "/api/v1/chat.go"
     },
@@ -39,6 +43,10 @@
     {
       "src": "/api/v1/images/generations",
       "dest": "/api/v1/image.go"
+    },
+    {
+      "src": "/designer/.*",
+      "dest": "/api/designer.go"
     },
     {
       "src": "/sydney/.*",

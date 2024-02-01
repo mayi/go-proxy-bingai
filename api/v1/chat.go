@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	globalChat = binglib.NewChat("").SetBingBaseUrl("http://localhost:" + common.PORT).SetSydneyBaseUrl("ws://localhost:" + common.PORT)
+	globalChat *binglib.Chat
 
 	chatMODELS = []string{binglib.BALANCED, binglib.BALANCED_OFFLINE, binglib.CREATIVE, binglib.CREATIVE_OFFLINE, binglib.PRECISE, binglib.PRECISE_OFFLINE,
 		binglib.BALANCED_G4T, binglib.BALANCED_G4T_OFFLINE, binglib.CREATIVE_G4T, binglib.CREATIVE_G4T_OFFLINE, binglib.PRECISE_G4T, binglib.PRECISE_G4T_OFFLINE}
@@ -22,6 +22,13 @@ var (
 )
 
 func ChatHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "POST")
+		w.Header().Add("Access-Control-Allow-Method", "POST")
+		w.Header().Add("Access-Control-Allow-Header", "Content-Type, Authorization")
+		return
+	}
+
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte("Method Not Allowed"))
@@ -35,6 +42,7 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chat := globalChat.Clone()
+	chat.SetXFF(common.GetRandomIP())
 
 	cookie := r.Header.Get("Cookie")
 	if cookie == "" {
@@ -118,6 +126,8 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				w.Write([]byte("data: "))
 				w.Write(resData)
+				w.Write([]byte("\n\n"))
+				flusher.Flush()
 				break
 			}
 			resData, err := json.Marshal(resp)
@@ -131,15 +141,17 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("\n\n"))
 			flusher.Flush()
 
-			if tmp == "User needs to solve CAPTCHA to continue." && common.BypassServer != "" {
+			if (tmp == "User needs to solve CAPTCHA to continue." || tmp == "Request is throttled." || tmp == "Unknown error.") && common.BypassServer != "" && r.Header.Get("Cookie") == "" {
 				go func(cookie string) {
-					t, _ := getCookie(cookie)
+					t, _ := getCookie(cookie, chat.GetChatHub().GetConversationId(), hex.NewUUID())
 					if t != "" {
 						globalChat.SetCookies(t)
 					}
 				}(globalChat.GetCookies())
 			}
 		}
+		w.Write([]byte("data: [DONE]\n"))
+		flusher.Flush()
 	} else {
 		text, err := chat.Chat(prompt, msg)
 		if err != nil {
@@ -166,9 +178,9 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write(resData)
 
-		if text == "User needs to solve CAPTCHA to continue." && common.BypassServer != "" {
+		if (text == "User needs to solve CAPTCHA to continue." || text == "Request is throttled." || text == "Unknown error.") && common.BypassServer != "" && r.Header.Get("Cookie") == "" {
 			go func(cookie string) {
-				t, _ := getCookie(cookie)
+				t, _ := getCookie(cookie, chat.GetChatHub().GetConversationId(), hex.NewUUID())
 				if t != "" {
 					globalChat.SetCookies(t)
 				}

@@ -12,10 +12,17 @@ import (
 )
 
 var (
-	globalImage = binglib.NewImage("").SetBingBaseUrl("http://localhost:" + common.PORT)
+	globalImage *binglib.Image
 )
 
 func ImageHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Allow", "POST")
+		w.Header().Add("Access-Control-Allow-Method", "POST")
+		w.Header().Add("Access-Control-Allow-Header", "Content-Type, Authorization")
+		return
+	}
+
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte("Method Not Allowed"))
@@ -29,6 +36,7 @@ func ImageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	image := globalImage.Clone()
+	image.SetXFF(common.GetRandomIP())
 
 	cookie := r.Header.Get("Cookie")
 	if cookie == "" {
@@ -38,7 +46,7 @@ func ImageHandler(w http.ResponseWriter, r *http.Request) {
 			cookie = common.USER_TOKEN_LIST[rng.Intn(len(common.USER_TOKEN_LIST))]
 		} else {
 			if common.BypassServer != "" {
-				t, _ := getCookie(cookie)
+				t, _ := getCookie(cookie, "", "")
 				if t != "" {
 					cookie = t
 				}

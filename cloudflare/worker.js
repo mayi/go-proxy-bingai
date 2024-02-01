@@ -13,6 +13,7 @@ const WEB_CONFIG = {
 
 const SYDNEY_ORIGIN = 'https://sydney.bing.com';
 const BING_ORIGIN = 'https://www.bing.com';
+const DESIGNER_ORIGIN = 'https://designer.microsoft.com';
 const KEEP_REQ_HEADERS = [
   'accept',
   'accept-encoding',
@@ -68,15 +69,6 @@ const IP_RANGE = [
   ['13.80.0.0', '13.81.255.255'],        // Azure Cloud WestEurope 131070
   ['20.73.0.0', '20.73.255.255'],        // Azure Cloud WestEurope 65534
 ];
-
-const challengeResponseBody = `
-<script type="text/javascript">
-    function verificationComplete(){
-        window.parent.postMessage("verificationComplete", "*");
-	}
-    window.onload = verificationComplete;
-</script>
-`;
 
 /**
  * 随机整数 [min,max)
@@ -135,28 +127,29 @@ const randomString = (e) => {
 }
 
 const rewriteBody = async (res) => {
-    const content_type = res.headers.get("Content-Type") || "";
-    const content_encoding = res.headers.get("Content-Encoding") || "";
-    let encoding = null;
-    let body = res.body;
-    if (content_type.startsWith("text/html")) {
-      body = res.body;
-    } else if (res.url.endsWith("js")) {
-      if (res.url.includes('/rp/')) {
-        let decodedContent = null;
-        if (content_encoding == 'br') {
-          decodedContent = new TextDecoder("utf-8").decode(brotli_decode(new Int8Array(await res.clone().arrayBuffer())));
-          encoding = 'gzip';
-        } else {
-          decodedContent = new TextDecoder("utf-8").decode(new Int8Array(await res.clone().arrayBuffer()));
-        }
-        if (decodedContent) {
-          // @ts-ignore
-          body = decodedContent.replaceAll("www.bing.com", WEB_CONFIG.WORKER_URL.replace("http://", "").replace("https://", ""));
-        }
+  const content_type = res.headers.get("Content-Type") || "";
+  const content_encoding = res.headers.get("Content-Encoding") || "";
+  let encoding = null;
+  let body = res.body;
+  if (content_type.startsWith("text/html")) {
+    body = res.body;
+  } else if (res.url.endsWith("js")) {
+    if (res.url.includes('/rp/')) {
+      let decodedContent = null;
+      if (content_encoding == 'br') {
+        decodedContent = new TextDecoder("utf-8").decode(brotli_decode(new Int8Array(await res.clone().arrayBuffer())));
+        encoding = 'gzip';
+      } else {
+        decodedContent = new TextDecoder("utf-8").decode(new Int8Array(await res.clone().arrayBuffer()));
+      }
+      if (decodedContent) {
+        // @ts-ignore
+        body = decodedContent.replaceAll("www.bing.com", WEB_CONFIG.WORKER_URL.replace("http://", "").replace("https://", ""));
+        body = body.replaceAll("designer.microsoft.com", WEB_CONFIG.WORKER_URL.replace("http://", "").replace("https://", "")+'/designer');
       }
     }
-   return {body, encoding};
+  }
+  return {body, encoding};
 }
 
 /**
@@ -197,23 +190,65 @@ const home = async (pathname) => {
   return newRes;
 };
 
+const challengeResponseBody = `
+<script type="text/javascript">
+  async function ChallengeComplete(){
+    let IG = window.parent._G.IG,
+    convId = window.parent.CIB.manager.conversation.id,
+    rid = window.parent.CIB.manager.conversation.messages[0].requestId,
+    iframeid = '{{%s}}';
+		await fetch('/challenge/verify?IG='+encodeURI(IG)+'&iframeid='+encodeURI(iframeid)+'&convId='+encodeURI(convId)+'&rid='+encodeURI(rid), {
+			credentials: 'include',
+		}).then((res) => {
+			if (res.ok) {
+				window.parent.postMessage("verificationComplete", "*");
+			} else {
+				window.parent.postMessage("verificationFailed", "*");
+			}
+		}).cache(() => {
+			window.parent.postMessage("verificationFailed", "*");
+		});
+	}
+
+	window.onload = ChallengeComplete;
+</script>
+`;
+
 /**
  * challenge
+ * @param {Request} request
+ * @returns
+ */
+const challenge = async (request) => {
+  if (request.method != 'GET') {
+    return new Response('{"code":405,"message":"Method Not Allowed","data":null}')
+  }
+
+  const currentUrl = new URL(request.url);
+  const newRes = new Response(challengeResponseBody.replaceAll('{{%s}}', currentUrl.searchParams.get('iframeid')));
+  newRes.headers.set('Content-Type', 'text/html; charset=utf-8');
+  return newRes
+};
+
+/**
+ * verify
  * @param {Request} request
  * @param {String} cookie
  * @returns
  */
-const challenge = async (request, cookie) => {
+const verify = async (request, cookie) => {
   if (request.method != 'GET') {
     return new Response('{"code":405,"message":"Method Not Allowed","data":null}')
   }
 
   const currentUrl = new URL(request.url);
   let req = {
+    'IG': currentUrl.searchParams.get('IG'),
     'iframeid': currentUrl.searchParams.get('iframeid'),
     'cookies': cookie,
+    'convId': currentUrl.searchParams.get('convId'),
+    'rid': currentUrl.searchParams.get('rid'),
   }
-  console.log(JSON.stringify(req))
   const newReq = new Request(BYPASS_SERVER, {
     method: 'POST',
     body: JSON.stringify(req),
@@ -225,11 +260,11 @@ const challenge = async (request, cookie) => {
   const resData = await res.json();
 
   const cookies = resData.result.cookies.split('; ')
-  const newRes = new Response(challengeResponseBody);
+  const newRes = new Response(JSON.stringify(resData));
   for (let v of cookies) {
     newRes.headers.append('Set-Cookie', v+'; path=/')
   }
-  newRes.headers.set('Content-Type', 'text/html; charset=utf-8');
+  newRes.headers.set('Content-Type', 'application/json; charset=utf-8');
   return newRes
 };
 
@@ -266,7 +301,10 @@ export default {
     let targetUrl;
     if (currentUrl.pathname.includes('/sydney')) {
       targetUrl = new URL(SYDNEY_ORIGIN + currentUrl.pathname + currentUrl.search);
-    } else {
+    } else if (currentUrl.pathname.includes('/designer/')) {
+      targetUrl = new URL(DESIGNER_ORIGIN + currentUrl.pathname.replaceAll('/designer/', '/') + currentUrl.search);
+      console.log(targetUrl)
+    } else{
       targetUrl = new URL(BING_ORIGIN + currentUrl.pathname + currentUrl.search);
     }
 
@@ -320,7 +358,10 @@ export default {
     }
 
     if (currentUrl.pathname === '/turing/captcha/challenge') {
-      return challenge(request, cookies);
+      return challenge(request);
+    }
+    if (currentUrl.pathname === '/challenge/verify') {
+      return verify(request, cookies);
     }
     if (currentUrl.pathname.indexOf('/v1') === 0 || currentUrl.pathname.indexOf('/api/v1') === 0) {
       return bingapi(request, cookies);
