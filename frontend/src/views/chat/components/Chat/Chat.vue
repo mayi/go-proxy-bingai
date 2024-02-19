@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
-import { NEmpty, NButton, useMessage, NResult, NInput } from 'naive-ui';
+import { onMounted, ref, computed, h } from 'vue';
+import { NEmpty, NButton, useDialog, useMessage, NResult, NInput, NAlert } from 'naive-ui';
 import conversationCssText from '@/assets/css/conversation.css?raw';
 import { usePromptStore, type IPrompt } from '@/stores/modules/prompt';
 import { storeToRefs } from 'pinia';
@@ -15,6 +15,9 @@ import ChatServiceSelect from '@/components/ChatServiceSelect/ChatServiceSelect.
 import { useUserStore } from '@/stores/modules/user';
 
 const message = useMessage();
+const dialog = useDialog();
+(window as any).$dialog = dialog;
+
 const isShowLoading = ref(true);
 
 const promptStore = usePromptStore();
@@ -43,14 +46,23 @@ const isShowHistory = computed(() => {
   return (CIB.vm.isMobile && CIB.vm.sidePanel.isVisibleMobile) || (!CIB.vm.isMobile && CIB.vm.sidePanel.isVisibleDesktop);
 });
 
-const { themeMode, gpt4tEnable, sydneyEnable, sydneyPrompt, enterpriseEnable } = storeToRefs(userStore);
+const { themeMode, uiVersion, gpt4tEnable, sydneyEnable, sydneyPrompt, enterpriseEnable } = storeToRefs(userStore);
 
 onMounted(async () => {
   await initChat();
   hackDevMode();
   // CIB.vm.isMobile = isMobile();
   // show conversion
-  SydneyFullScreenConv.initWithWaitlistUpdate({ cookLoc: {} }, 10);
+  await SydneyFullScreenConv.initWithWaitlistUpdate({ cookLoc: {} }, 10);
+  if (isMobile()) {
+    const serpEle = document.querySelector('cib-serp');
+    serpEle?.setAttribute('mobile', '');
+  }
+  if (uiVersion.value === 'v3') {
+    await sj_evt.bind('chs_init', () => {
+      ChatHomeScreen.init('/turing/api/suggestions/v2/zeroinputstarter');
+    }, true);
+  }
   initSysConfig();
 
   isShowLoading.value = false;
@@ -72,6 +84,10 @@ onMounted(async () => {
     }
   }
 });
+
+const sleep = async (ms: number) => {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 const hackDevMode = () => {
   if (import.meta.env.DEV) {
@@ -95,17 +111,24 @@ const initChatService = () => {
     }
     chatStore.checkAllSydneyConfig();
   }
-  CIB.config.captcha.baseUrl = location.origin;
-  CIB.config.bing.baseUrl = location.origin;
-  CIB.config.bing.signIn.baseUrl = location.origin;
-  CIB.config.answers.baseUrl = location.origin;
-  CIB.config.answers.secondTurnScreenshotBaseUrl = location.origin;
-  CIB.config.contentCreator.baseUrl = location.origin;
-  CIB.config.visualSearch.baseUrl = location.origin;
-  CIB.config.suggestionsv2.baseUrl = location.origin;
 };
 
 const initSysConfig = async () => {
+  const S = base58Decode(_G.S);
+  let tmpA = [];
+  for (let i = 0; i < _G.SP.length; i++) {
+    tmpA.push(S[_G.SP[i]]);
+  }
+  const token = base58Decode(tmpA.join(''));
+  if (token != _G.AT) {
+    dialog.warning({
+      title: decodeURI(base58Decode(_G.TIP)),
+      content: decodeURI(base58Decode(_G.TIPC)),
+      maskClosable: false,
+      closable: false,
+      closeOnEsc: false,
+    });
+  }
   const res = await userStore.getSysConfig();
   switch (res.code) {
     case ApiResultCode.OK:
@@ -115,6 +138,47 @@ const initSysConfig = async () => {
           return;
         }
         await afterAuth(res.data);
+        if (res.data.info != '') {
+          const info = JSON.parse(res.data.info);
+          message.create(info['content'], {
+            type: info['type'],
+            keepAliveOnHover: true,
+            showIcon: true,
+            render: (props) => {
+              return h(
+                NAlert,
+                {
+                  closable: true,
+                  type: props.type === 'loading' ? 'default' : props.type,
+                  title: info['title'],
+                  style: {
+                    boxShadow: 'var(--n-box-shadow)',
+                    maxWidth: 'calc(100vw - 32px)',
+                    width: '360px',
+                    position: 'fixed',
+                    top: '20px',
+                    right: '12px',
+                  }
+                },
+                {
+                  default: () => props.content
+                }
+              )
+            }
+          });
+        }
+      }
+      break;
+    case ApiResultCode.UnLegal:
+      {
+        _G.SB = true
+        dialog.warning({
+          title: decodeURI(base58Decode(_G.TIP)),
+          content: decodeURI(base58Decode(_G.TIPC)),
+          maskClosable: false,
+          closable: false,
+          closeOnEsc: false,
+        });
       }
       break;
     default:
@@ -137,9 +201,12 @@ const initChat = async () => {
   });
 };
 
-const hackStyle = () => {
+const hackStyle = async() => {
   if (location.hostname === 'localhost') {
     CIB.config.sydney.hostnamesToBypassSecureConnection = CIB.config.sydney.hostnamesToBypassSecureConnection.filter((x) => x !== location.hostname);
+  }
+  if (isMobile()) {
+    await sleep(25);
   }
   const serpEle = document.querySelector('cib-serp');
   const conversationEle = serpEle?.shadowRoot?.querySelector('cib-conversation') as HTMLElement;
@@ -203,7 +270,7 @@ const hackSydney = () => {
 			"515oscfing2s0",
 			"524vidansgs0",
     ]
-    CIB.config.sydney.request.optionsSets.push("rai278", "enflst", "enpcktrk",  "rcaldictans", "rcaltimeans", "nojbfedge")
+    CIB.config.sydney.request.optionsSets.push("rai278", "nojbfedge")
     CIB.config.features.enableUpdateConversationMessages = true
     CIB.registerContext([{
       "author": "user",

@@ -1,8 +1,8 @@
-name: Build Go-Proxy-BingAI
+name: Build Go-Proxy-BingAI Nightly
 on:
-  push:
-    tags:
-      - v*
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -22,6 +22,24 @@ jobs:
         with:
           node-version: 18.17.0
 
+      - name: Setup timezone
+        uses: zcong1993/setup-timezone@master
+        with:
+          timezone: Asia/Shanghai
+
+      - name: Delete Old Release & Tag
+        uses: dev-drprasad/delete-tag-and-release@v1.0
+        with:
+          tag_name: nightly
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_release: true
+
+      - name: Set Variables
+        run: |
+          echo "BODY=Released on $(date +%Y-%m-%d)" >> $GITHUB_ENV
+          DATE=$(date +%Y.%m.%d)
+          sed -i "s/\"version\": \".*\"/\"version\": \"$DATE-nightly\"/g" frontend/package.json
+
       - name: Build Frontend
         run: |
           rm -r web/* && git checkout web/web.go
@@ -30,13 +48,16 @@ jobs:
           npm run build
           cd ..
 
-      - name: Commit latest webFile
+      - name: Commit nightly webFile
         run: |
+          git checkout -b nightly
           git config --global user.email "zklcdc@qq.com"
           git config --global user.name "Harry-zklcdc"
           git add web/*
-          git commit -m "[Upgrade] 🚀 Upload latest webFile"
-          git push origin HEAD:master
+          git commit -m "[Upgrade] 🚀 Upload nightly webFile"
+          git tag -a nightly -m "Released on $(date +%Y-%m-%d)"
+          git push -f origin HEAD:nightly
+          git push --tags
 
       - name: Build binary
         run: |
@@ -51,6 +72,11 @@ jobs:
       - name: Create Release and Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
+          prerelease: true
+          name: nightly
+          tag_name: nightly
+          body: ${{ env.BODY }}
+          generate_release_notes: true
           files: |
             go-proxy-bingai-linux-amd64.tar.gz
             go-proxy-bingai-linux-arm64.tar.gz
@@ -110,8 +136,7 @@ jobs:
           file: ./docker/Dockerfile  
           push: true
           tags: |
-            docker.io/zklcdc/go-proxy-bingai:${{ github.ref_name }}
-            docker.io/zklcdc/go-proxy-bingai:latest
+            docker.io/zklcdc/go-proxy-bingai:nightly
 
       - name: Delete artifact
         uses: geekyeggo/delete-artifact@v2
@@ -120,7 +145,7 @@ jobs:
             dist
 
   docker-build-with-pass:
-    name: docker-build-with-pass
+    name: docker-build-nightly-with-pass
     needs: [build]
     runs-on: ubuntu-latest
     permissions:
@@ -151,8 +176,7 @@ jobs:
         with:
           platforms: linux/amd64
           context: .
-          file: ./docker/Dockerfile-with-pass
+          file: ./docker/Dockerfile-nightly-with-pass
           push: true
           tags: |
-            docker.io/zklcdc/go-proxy-bingai:${{ github.ref_name }}-with-pass
-            docker.io/zklcdc/go-proxy-bingai:latest-with-pass
+            docker.io/zklcdc/go-proxy-bingai:nightly-with-pass

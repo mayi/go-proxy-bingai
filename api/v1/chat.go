@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	binglib "github.com/Harry-zklcdc/bing-lib"
@@ -22,6 +23,10 @@ var (
 )
 
 func ChatHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Header().Add("Access-Control-Allow-Methods", "*")
+	w.Header().Add("Access-Control-Allow-Headers", "*")
+
 	if r.Method == "OPTIONS" {
 		w.Header().Add("Allow", "POST")
 		w.Header().Add("Access-Control-Allow-Method", "POST")
@@ -67,7 +72,7 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 	var resq chatRequest
 	json.Unmarshal(resqB, &resq)
 
-	if !isInArray(chatMODELS, resq.Model) {
+	if !common.IsInArray(chatMODELS, resq.Model) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Model Not Found"))
 		return
@@ -187,13 +192,8 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 			}(globalChat.GetCookies())
 		}
 	}
-}
 
-func isInArray(arr []string, str string) bool {
-	for _, v := range arr {
-		if v == str {
-			return true
-		}
+	if cookie != chat.GetCookies() && !strings.Contains(chat.GetCookies(), common.USER_TOKEN_COOKIE_NAME) {
+		globalChat.SetCookies(chat.GetCookies())
 	}
-	return false
 }

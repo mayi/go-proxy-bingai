@@ -16,6 +16,10 @@ var (
 )
 
 func ImageHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Access-Control-Allow-Origin", "*")
+	w.Header().Add("Access-Control-Allow-Methods", "*")
+	w.Header().Add("Access-Control-Allow-Headers", "*")
+
 	if r.Method == "OPTIONS" {
 		w.Header().Add("Allow", "POST")
 		w.Header().Add("Access-Control-Allow-Method", "POST")
@@ -65,6 +69,21 @@ func ImageHandler(w http.ResponseWriter, r *http.Request) {
 	var resq imageRequest
 	json.Unmarshal(resqB, &resq)
 
+	resp := imageResponse{
+		Created: time.Now().Unix(),
+	}
+
+	if resq.Prompt == "" {
+		resData, err := json.Marshal(resp)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Write(resData)
+		return
+	}
+
 	imgs, _, err := image.Image(resq.Prompt)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -72,9 +91,6 @@ func ImageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := imageResponse{
-		Created: time.Now().Unix(),
-	}
 	for _, img := range imgs {
 		resp.Data = append(resp.Data, imageData{
 			Url: img,
