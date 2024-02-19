@@ -1,8 +1,8 @@
 package v1
 
 import (
-	"adams549659584/go-proxy-bingai/common"
 	"log"
+	"mayi/go-proxy-bingai/common"
 	"net/http"
 	"strings"
 	"time"

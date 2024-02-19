@@ -1,10 +1,10 @@
 package v1
 
 import (
-	"adams549659584/go-proxy-bingai/common"
 	"encoding/json"
 	"io"
 	"math/rand"
+	"mayi/go-proxy-bingai/common"
 	"net/http"
 	"time"
 
