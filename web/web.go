@@ -1,9 +1,9 @@
 package web
 
 import (
-	"adams549659584/go-proxy-bingai/common"
 	"embed"
 	"io/fs"
+	"mayi/go-proxy-bingai/common"
 	"net/http"
 	"net/http/httputil"
 	"path/filepath"

@@ -1,10 +1,10 @@
 package api
 
 import (
-	"adams549659584/go-proxy-bingai/api/helper"
-	"adams549659584/go-proxy-bingai/common"
 	"encoding/json"
 	"io"
+	"mayi/go-proxy-bingai/api/helper"
+	"mayi/go-proxy-bingai/common"
 	"net/http"
 	"strings"
 

@@ -1,8 +1,8 @@
 package api
 
 import (
-	"adams549659584/go-proxy-bingai/api/helper"
 	"fmt"
+	"mayi/go-proxy-bingai/api/helper"
 	"net/http"
 )
 
