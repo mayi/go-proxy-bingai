@@ -1,4 +1,4 @@
-module adams549659584/go-proxy-bingai
+module mayi/go-proxy-bingai
 
 go 1.21.4
 

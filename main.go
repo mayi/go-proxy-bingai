@@ -1,11 +1,11 @@
 package main
 
 import (
-	"adams549659584/go-proxy-bingai/api"
-	"adams549659584/go-proxy-bingai/common"
-	"adams549659584/go-proxy-bingai/common/helper"
-	v1 "adams549659584/go-proxy-bingai/common/v1"
-	"adams549659584/go-proxy-bingai/web"
+	"mayi/go-proxy-bingai/api"
+	"mayi/go-proxy-bingai/common"
+	"mayi/go-proxy-bingai/common/helper"
+	v1 "mayi/go-proxy-bingai/common/v1"
+	"mayi/go-proxy-bingai/web"
 	"net/http"
 	"time"
 )
