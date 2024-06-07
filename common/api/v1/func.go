@@ -3,6 +3,7 @@ package v1
 import (
 	"mayi/go-proxy-bingai/common"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -13,17 +14,22 @@ import (
 )
 
 func init() {
+	apikey = os.Getenv("APIKEY")
+	blankApikey = os.Getenv("Go_Proxy_BingAI_BLANK_API_KEY") != ""
+
 	if !blankApikey && apikey == "" {
 		common.Logger.Info("APIKEY is empty, generate a new one.")
 		apikey = "sk-" + hex.NewHex(32)
 		common.Logger.Info("APIKEY: %s", apikey)
 	}
 	go func() {
+		globalChat = binglib.NewChat("").SetBingBaseUrl("http://localhost:" + common.PORT).SetSydneyBaseUrl("ws://localhost:" + common.PORT).SetBypassServer(common.BypassServer)
+		globalImage = binglib.NewImage("").SetBingBaseUrl("http://localhost:" + common.PORT).SetBypassServer(common.BypassServer)
 		time.Sleep(200 * time.Millisecond)
 		t, _ := getCookie("", "", "")
 		common.Logger.Info("BingAPI Ready!")
-		globalChat = binglib.NewChat(t).SetBingBaseUrl("http://localhost:" + common.PORT).SetSydneyBaseUrl("ws://localhost:" + common.PORT).SetBypassServer(common.BypassServer)
-		globalImage = binglib.NewImage(t).SetBingBaseUrl("http://localhost:" + common.PORT).SetBypassServer(common.BypassServer)
+		globalChat.SetCookies(t)
+		globalImage.SetCookies(t)
 	}()
 }
 
@@ -50,7 +56,7 @@ func getCookie(reqCookie, convId, rid string) (cookie string, err error) {
 	if err != nil {
 		return
 	}
-	resp, status, err := binglib.Bypass(common.BypassServer, reqCookie, "local-gen-"+hex.NewUUID(), IG, convId, rid, T)
+	resp, status, err := binglib.Bypass(common.BypassServer, reqCookie, "local-gen-"+hex.NewUUID(), IG, convId, rid, T, "")
 	if err != nil || status != http.StatusOK {
 		common.Logger.Error("Bypass Error: %v", err)
 		return

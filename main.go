@@ -3,8 +3,9 @@ package main
 import (
 	"mayi/go-proxy-bingai/api"
 	"mayi/go-proxy-bingai/common"
+	wss_api "mayi/go-proxy-bingai/common/api"
+	v1 "mayi/go-proxy-bingai/common/api/v1"
 	"mayi/go-proxy-bingai/common/helper"
-	v1 "mayi/go-proxy-bingai/common/v1"
 	"mayi/go-proxy-bingai/web"
 	"net/http"
 	"time"
@@ -27,10 +28,12 @@ func main() {
 	http.HandleFunc("/turing/captcha/challenge", helper.Middleware(api.ChallengeHandler))
 	http.HandleFunc("/challenge/verify", helper.Middleware(api.VerifyHandler))
 
+	http.HandleFunc("/th/", helper.Middleware(api.Th))
 	http.HandleFunc("/designer/", helper.Middleware(api.Designer))
 
 	http.HandleFunc("/edgesvc/", helper.Middleware(api.Edgesvc))
-	http.HandleFunc("/sydney/", helper.Middleware(api.Sydney))
+	http.HandleFunc("/sydney/", helper.Middleware(wss_api.Sydney))
+	http.HandleFunc("/opaluqu/", helper.Middleware(wss_api.Opaluqu))
 
 	if common.IS_DEBUG_MODE {
 		http.HandleFunc("/web/", helper.Middleware(web.DebugWebHandler))

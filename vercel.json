@@ -47,8 +47,8 @@
       "dest": "/api/edgesvc.go"
     },
     {
-      "src": "/sydney/.*",
-      "dest": "/api/sydney.go"
+      "src": "/th/.*",
+      "dest": "/api/th.go"
     },
     {
       "src": "/web/.*",
