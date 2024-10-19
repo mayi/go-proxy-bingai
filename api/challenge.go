@@ -1,14 +1,8 @@
 package api
 
 import (
-<<<<<<< HEAD
-	"fmt"
 	"mayi/go-proxy-bingai/common"
 	"mayi/go-proxy-bingai/common/helper"
-=======
-	"adams549659584/go-proxy-bingai/common"
-	"adams549659584/go-proxy-bingai/common/helper"
->>>>>>> 67b266838df212ca7e8773b4015f6057a4b8d4f5
 	"net/http"
 )
 
